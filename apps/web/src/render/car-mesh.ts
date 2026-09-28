@@ -64,11 +64,20 @@ export interface CarView {
   flash(): void;
 }
 
-export function createCarMesh(color: ColorRepresentation): CarView {
+export interface CarOptions {
+  /** A see-through car for the ghost. */
+  ghost?: boolean;
+}
+
+export function createCarMesh(
+  color: ColorRepresentation,
+  { ghost = false }: CarOptions = {},
+): CarView {
   const object = new Group();
   const body = wedge();
-  object.add(new Mesh(body, new MeshBasicMaterial({ color: '#0d1426' })));
-  object.add(new LineSegments(new EdgesGeometry(body), new LineBasicMaterial({ color })));
+  const see = ghost ? { transparent: true, opacity: 0.28, depthWrite: false } : {};
+  object.add(new Mesh(body, new MeshBasicMaterial({ color: '#0d1426', ...see })));
+  object.add(new LineSegments(new EdgesGeometry(body), new LineBasicMaterial({ color, ...see })));
 
   const glowMaterial = new MeshBasicMaterial({
     color,
@@ -83,7 +92,13 @@ export function createCarMesh(color: ColorRepresentation): CarView {
 
   const marker = new Mesh(
     new CircleGeometry(1, 24),
-    new MeshBasicMaterial({ color, side: DoubleSide, depthTest: false }),
+    new MeshBasicMaterial({
+      color,
+      side: DoubleSide,
+      depthTest: false,
+      transparent: ghost,
+      opacity: ghost ? 0.6 : 1,
+    }),
   );
   marker.rotation.x = -Math.PI / 2;
   marker.renderOrder = 10;
@@ -104,7 +119,7 @@ export function createCarMesh(color: ColorRepresentation): CarView {
     marker,
     showMarker(cameraHeight) {
       marker.visible = cameraHeight !== null;
-      if (cameraHeight !== null) marker.scale.setScalar(cameraHeight * 0.014);
+      if (cameraHeight !== null) marker.scale.setScalar(cameraHeight * (ghost ? 0.011 : 0.014));
     },
     flash() {
       flashLeft = FLASH_SECONDS;

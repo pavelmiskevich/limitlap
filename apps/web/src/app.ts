@@ -11,7 +11,17 @@ import {
   PROTO_RING,
   type TrackGeometry,
 } from '@limitlap/tracks';
-import { createSession } from './game/session.ts';
+import {
+  buildGhost,
+  ghostDistanceAt,
+  ghostKey,
+  loadGhost,
+  recordBestLap,
+  saveGhost,
+  type Ghost,
+  type GhostRecord,
+} from './game/ghost.ts';
+import { createSession, type Session } from './game/session.ts';
 import { createControls } from './input/controls.ts';
 import { combine } from './input/input.ts';
 import { createKeyboard } from './input/keyboard.ts';
@@ -96,8 +106,14 @@ export function startApp(root: HTMLElement): void {
   const path = geometry.lanes[laneIndex];
   if (!path) throw new Error('no lane path');
 
-  const car = createCarMesh(LANE_COLORS[laneIndex] ?? '#ffffff');
-  stage.scene.add(car.object, car.marker);
+  const color = LANE_COLORS[laneIndex] ?? '#ffffff';
+  const car = createCarMesh(color);
+  const ghostCar = createCarMesh('#ffffff', { ghost: true });
+  stage.scene.add(car.object, car.marker, ghostCar.object, ghostCar.marker);
+
+  const storeKey = ghostKey(`${spec.id}@${spec.version}`, session.profile.key, laneIndex);
+  const stored = loadGhost(storeKey);
+  let ghost = stored ? tryBuildGhost(stored, session) : null;
 
   let view: 'chase' | 'overview' = 'chase';
   let snapCamera = true;
@@ -125,11 +141,23 @@ export function startApp(root: HTMLElement): void {
   runLoop(stage, {
     update() {
       session.update(input.command({ speed: session.state.speed, profile: session.profile }));
-      if (session.lastEvents.some((e) => e.type === 'deslot')) car.flash();
+      for (const event of session.lastEvents) {
+        if (event.type === 'deslot') car.flash();
+        if (event.type === 'lap' && (ghost === null || event.time < ghost.record.lapTime)) {
+          const record = recordBestLap(session, event);
+          saveGhost(storeKey, record);
+          ghost = tryBuildGhost(record, session);
+        }
+      }
     },
     render(alpha, dt) {
       const distance = session.renderDistance(alpha);
       car.update(path, distance, fx.toNumber(session.state.slip), dt);
+
+      const sinceLapStart = session.previous.tick + alpha - fx.toNumber(session.state.lapStart);
+      const ghostDistance = ghost ? ghostDistanceAt(ghost, sinceLapStart) : null;
+      ghostCar.object.visible = ghostDistance !== null;
+      if (ghostDistance !== null) ghostCar.update(path, ghostDistance, 0, dt);
 
       const camera = stage.camera;
       if (view === 'overview') {
@@ -138,9 +166,11 @@ export function startApp(root: HTMLElement): void {
         camera.position.set(...position);
         camera.lookAt(...target);
         car.showMarker(position[1]);
+        ghostCar.showMarker(ghostDistance === null ? null : position[1]);
         return;
       }
       car.showMarker(null);
+      ghostCar.showMarker(null);
       const target = chaseTarget(path, distance);
       desired.set(...target.position);
       desiredLook.set(...target.lookAt);
@@ -154,6 +184,15 @@ export function startApp(root: HTMLElement): void {
       snapCamera = false;
     },
   });
+}
+
+/** A stored ghost that no longer replays (e.g. after a format change) is ignored. */
+function tryBuildGhost(record: GhostRecord, session: Session): Ghost | null {
+  try {
+    return buildGhost(record, session.lane, session.profile);
+  } catch {
+    return null;
+  }
 }
 
 function trackBounds(geometry: TrackGeometry): Bounds {

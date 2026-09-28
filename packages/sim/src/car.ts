@@ -63,6 +63,8 @@ export type SimEvent =
     }
   | { readonly type: 'lap'; readonly tick: number; readonly lap: number; readonly time: Fx };
 
+export type LapEvent = Extract<SimEvent, { type: 'lap' }>;
+
 export function createCar(): CarState {
   return {
     tick: 0,
