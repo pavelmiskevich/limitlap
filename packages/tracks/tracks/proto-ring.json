@@ -1,0 +1,57 @@
+{
+  "id": "proto-ring",
+  "version": 1,
+  "lanes": 4,
+  "laneSpacing": 4,
+  "sections": [
+    {
+      "type": "straight",
+      "length": 210
+    },
+    {
+      "type": "turn",
+      "radius": 90,
+      "angle": 90,
+      "direction": "left"
+    },
+    {
+      "type": "straight",
+      "length": 155
+    },
+    {
+      "type": "turn",
+      "radius": 35,
+      "angle": 90,
+      "direction": "left"
+    },
+    {
+      "type": "straight",
+      "length": 150
+    },
+    {
+      "type": "loop",
+      "radius": 10
+    },
+    {
+      "type": "straight",
+      "length": 175
+    },
+    {
+      "type": "turn",
+      "radius": 60,
+      "angle": 90,
+      "direction": "left"
+    },
+    {
+      "type": "straight",
+      "length": 100
+    },
+    {
+      "type": "turn",
+      "radius": 120,
+      "angle": 90,
+      "direction": "left"
+    }
+  ],
+  "sectors": [3, 7]
+}
