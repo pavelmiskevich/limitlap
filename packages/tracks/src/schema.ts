@@ -68,7 +68,7 @@ function checkSection(section: unknown, index: number, maxOffset: number): strin
 
   const issues: string[] = [];
   const positive = (key: string) => {
-    if (!isNumber(section[key]) || (section[key]) <= 0) {
+    if (!isNumber(section[key]) || section[key] <= 0) {
       issues.push(`${at}: ${key} must be a number > 0`);
     }
   };
