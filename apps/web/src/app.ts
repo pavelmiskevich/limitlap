@@ -161,7 +161,7 @@ export function startApp(root: HTMLElement): void {
       }
     },
     render(alpha, dt) {
-      hud.update(race.render(alpha, dt, stage.camera, view));
+      hud.update(race.render(alpha, dt, stage.camera, view), dt);
       if (race.session.state.speed > 0) tracker.tick(dt);
       if (performance.now() - savedAt > 5000) save();
     },

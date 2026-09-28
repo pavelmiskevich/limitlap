@@ -398,3 +398,47 @@ body {
   color: var(--fg);
   font-size: 15px;
 }
+
+/* ---------------------------------------------------------------- deslot */
+
+.vignette {
+  position: fixed;
+  inset: 0;
+  opacity: 0;
+  box-shadow: inset 0 0 110px 34px rgb(255 40 20 / 85%);
+}
+
+.deslot-banner {
+  position: fixed;
+  top: 26%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  animation: deslot-pop 0.25s ease-out;
+}
+
+.deslot-banner[hidden] {
+  display: none;
+}
+
+.deslot-title {
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ff5a3c;
+  text-shadow: 0 0 18px rgb(255 60 30 / 85%);
+}
+
+.deslot-cause {
+  font-size: 17px;
+  opacity: 0.9;
+}
+
+@keyframes deslot-pop {
+  from {
+    transform: translateX(-50%) scale(1.4);
+    opacity: 0;
+  }
+}

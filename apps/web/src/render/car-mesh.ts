@@ -21,6 +21,7 @@ import {
   Vector3,
   type ColorRepresentation,
 } from 'three';
+import { outwardSign } from './turn.ts';
 
 const HOVER = 0.4;
 const MAX_YAW = (14 * Math.PI) / 180;
@@ -126,16 +127,9 @@ export function createCarMesh(
     },
     update(lane, distance, slip, dt) {
       const pose = lane.sample(distance);
-      const ahead = lane.sample(distance + 2);
       forward.set(...pose.forward);
       up.set(...pose.up);
-
-      // Turning left when the tangent rotates towards `left` around `up`.
-      const turn =
-        pose.left[0] * ahead.forward[0] +
-        pose.left[1] * ahead.forward[1] +
-        pose.left[2] * ahead.forward[2];
-      const outward = turn > 1e-4 ? -1 : turn < -1e-4 ? 1 : 0; // along `left`
+      const outward = outwardSign(lane, distance); // along `left`
 
       // Oversteer: the nose swings inward, the car drifts outward.
       forward.applyAxisAngle(up, -outward * slip * MAX_YAW);

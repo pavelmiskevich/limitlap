@@ -3,19 +3,30 @@
  * and the cameras. Rebuilt from scratch when the track or lane changes.
  */
 
-import { fx, type Command, type PhysicsProfile } from '@limitlap/sim';
+import {
+  fx,
+  type Command,
+  type DeslotCause,
+  type PhysicsProfile,
+  type SimEvent,
+} from '@limitlap/sim';
 import {
   compileTrack,
   createTrackGeometry,
   type TrackGeometry,
   type TrackSpec,
+  type Vec3,
 } from '@limitlap/tracks';
 import { Vector3, type Object3D, type PerspectiveCamera, type Scene } from 'three';
+import { vibrate } from '../haptics.ts';
 import type { HudModel } from '../hud/hud.ts';
+import { WARN_FROM } from '../hud/warning.ts';
 import { createCarMesh } from '../render/car-mesh.ts';
+import { createDeslotFx } from '../render/deslot-fx.ts';
 import { chaseTarget } from '../render/chase.ts';
 import { overviewPlacement, type Bounds } from '../render/overview.ts';
 import { createTrackMesh, LANE_COLORS } from '../render/track-mesh.ts';
+import { outwardSign } from '../render/turn.ts';
 import {
   buildGhost,
   ghostDistanceAt,
@@ -30,6 +41,8 @@ import {
 import { createSession, type Session } from './session.ts';
 
 export type View = 'chase' | 'overview';
+
+const SHAKE = 0.35;
 
 export interface RaceOptions {
   scene: Scene;
@@ -57,9 +70,19 @@ export function createRace({ scene, spec, lane: laneIndex, profile }: RaceOption
   const session = createSession({ track: compileTrack(spec), lane: laneIndex, profile });
 
   const trackMesh = createTrackMesh(spec, geometry);
-  const car = createCarMesh(LANE_COLORS[laneIndex] ?? '#ffffff');
+  const color = LANE_COLORS[laneIndex] ?? '#ffffff';
+  const car = createCarMesh(color);
+  const deslotFx = createDeslotFx(scene, color);
   const ghostCar = createCarMesh('#ffffff', { ghost: true });
-  const objects: Object3D[] = [trackMesh, car.object, car.marker, ghostCar.object, ghostCar.marker];
+  const objects: Object3D[] = [
+    trackMesh,
+    car.object,
+    car.marker,
+    ghostCar.object,
+    ghostCar.marker,
+    deslotFx.debris,
+    deslotFx.ring,
+  ];
   scene.add(...objects);
 
   let storeKey = '';
@@ -78,14 +101,50 @@ export function createRace({ scene, spec, lane: laneIndex, profile }: RaceOption
   const desiredUp = new Vector3();
   let snapCamera = true;
   let lastView: View | null = null;
+  let pendingDeslot: DeslotCause | null = null;
+  let shakeLeft = 0;
+  let previousGrip = fx.ZERO;
+  const WARN = fx.fromFloat(WARN_FROM);
+
+  const showDeslot = (event: Extract<SimEvent, { type: 'deslot' }>) => {
+    const at = fx.toNumber(event.distance);
+    const pose = path.sample(at);
+    const speed = fx.toNumber(session.previous.speed);
+    const out = outwardSign(path, at);
+    // Off the outside of the turn, or straight on and down when the car falls from a loop.
+    const side = event.cause === 'too-slow' ? 0 : out * 0.35;
+    const along = event.cause === 'too-slow' ? 0.6 : 1;
+    deslotFx.trigger({
+      position: [
+        pose.position[0] + pose.up[0] * 0.4,
+        pose.position[1] + pose.up[1] * 0.4,
+        pose.position[2] + pose.up[2] * 0.4,
+      ],
+      velocity: [0, 1, 2].map(
+        (k) => speed * (along * (pose.forward[k] ?? 0) + side * (pose.left[k] ?? 0)),
+      ) as unknown as Vec3,
+      capture: path.sample(fx.toNumber(session.state.distance)),
+    });
+    pendingDeslot = event.cause;
+    shakeLeft = SHAKE;
+    vibrate([60, 40, 120]);
+  };
+
+  const takeDeslot = () => {
+    const cause = pendingDeslot;
+    pendingDeslot = null;
+    return cause;
+  };
 
   return {
     session,
 
     update(command) {
       session.update(command);
+      if (previousGrip < WARN && session.state.grip >= WARN) vibrate(25);
+      previousGrip = session.state.grip;
       for (const event of session.lastEvents) {
-        if (event.type === 'deslot') car.flash();
+        if (event.type === 'deslot') showDeslot(event);
         if (event.type === 'lap' && (ghost === null || event.time < ghost.record.lapTime)) {
           const record = recordBestLap(session, event);
           saveGhost(storeKey, record);
@@ -97,6 +156,8 @@ export function createRace({ scene, spec, lane: laneIndex, profile }: RaceOption
     render(alpha, dt, camera, view) {
       const distance = session.renderDistance(alpha);
       car.update(path, distance, fx.toNumber(session.state.slip), dt);
+      deslotFx.update(dt);
+      car.object.visible = !deslotFx.carHidden;
 
       const sinceLapStart = session.previous.tick + alpha - fx.toNumber(session.state.lapStart);
       const ghostDistance = ghost ? ghostDistanceAt(ghost, sinceLapStart) : null;
@@ -126,6 +187,14 @@ export function createRace({ scene, spec, lane: laneIndex, profile }: RaceOption
         camera.up.lerp(desiredUp, k).normalize();
         camera.lookAt(lookAt);
         snapCamera = false;
+        // A short shake on a deslot, fading out.
+        shakeLeft = Math.max(0, shakeLeft - dt);
+        if (shakeLeft > 0) {
+          const a = (shakeLeft / SHAKE) * 0.35;
+          camera.position.x += (Math.random() - 0.5) * a;
+          camera.position.y += (Math.random() - 0.5) * a;
+          camera.position.z += (Math.random() - 0.5) * a;
+        }
       }
 
       const { state } = session;
@@ -138,10 +207,12 @@ export function createRace({ scene, spec, lane: laneIndex, profile }: RaceOption
         speed: fx.toNumber(state.speed),
         grip: fx.toNumber(state.grip),
         deslots: session.events.filter((e) => e.type === 'deslot').length,
+        deslot: takeDeslot(),
       };
     },
 
     restart() {
+      pendingDeslot = null;
       session.reset();
       snapCamera = true;
     },
