@@ -33,6 +33,19 @@ export default tseslint.config(
     languageOptions: { globals: globals.node },
   },
   {
+    files: ['packages/sim/src/**/*.ts'],
+    ignores: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        ...['Math', 'Date', 'performance', 'crypto'].map((name) => ({
+          name,
+          message: 'The simulation must be deterministic: use fixed-point helpers and ticks.',
+        })),
+      ],
+    },
+  },
+  {
     files: ['**/*.js'],
     ...tseslint.configs.disableTypeChecked,
   },
