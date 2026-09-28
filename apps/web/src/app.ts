@@ -15,6 +15,7 @@ import {
   buildGhost,
   ghostDistanceAt,
   ghostKey,
+  ghostTimeAt,
   loadGhost,
   recordBestLap,
   saveGhost,
@@ -22,6 +23,7 @@ import {
   type GhostRecord,
 } from './game/ghost.ts';
 import { createSession, type Session } from './game/session.ts';
+import { createHud } from './hud/hud.ts';
 import { createControls } from './input/controls.ts';
 import { combine } from './input/input.ts';
 import { createKeyboard } from './input/keyboard.ts';
@@ -117,13 +119,13 @@ export function startApp(root: HTMLElement): void {
 
   let view: 'chase' | 'overview' = 'chase';
   let snapCamera = true;
-  const keyboard = createKeyboard(window, {
-    onRestart: () => {
-      session.reset();
-      snapCamera = true;
-    },
-  });
+  const restart = () => {
+    session.reset();
+    snapCamera = true;
+  };
+  const keyboard = createKeyboard(window, { onRestart: restart });
   const controls = createControls(root);
+  const hud = createHud(root, { onRestart: restart });
   const input = combine([keyboard, controls.source]);
   window.addEventListener('keydown', (event) => {
     if (event.code === 'KeyC' && !event.repeat) {
@@ -153,6 +155,18 @@ export function startApp(root: HTMLElement): void {
     render(alpha, dt) {
       const distance = session.renderDistance(alpha);
       car.update(path, distance, fx.toNumber(session.state.slip), dt);
+
+      const { state } = session;
+      const lapTicks = state.tick - fx.toNumber(state.lapStart);
+      const ghostTime = ghost ? ghostTimeAt(ghost, fx.toNumber(state.distance)) : null;
+      hud.update({
+        lapTime: Math.max(0, lapTicks),
+        best: ghost ? ghost.lapTime : null,
+        delta: ghostTime === null ? null : lapTicks - ghostTime,
+        speed: fx.toNumber(state.speed),
+        grip: fx.toNumber(state.grip),
+        deslots: session.events.filter((e) => e.type === 'deslot').length,
+      });
 
       const sinceLapStart = session.previous.tick + alpha - fx.toNumber(session.state.lapStart);
       const ghostDistance = ghost ? ghostDistanceAt(ghost, sinceLapStart) : null;

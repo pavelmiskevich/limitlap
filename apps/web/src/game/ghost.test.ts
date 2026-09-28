@@ -4,6 +4,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   buildGhost,
   ghostDistanceAt,
+  ghostTimeAt,
   ghostKey,
   loadGhost,
   recordBestLap,
@@ -91,5 +92,29 @@ describe('ghost storage', () => {
       throw new Error('blocked');
     });
     expect(loadGhost(key)).toBeNull();
+  });
+});
+
+describe('ghostTimeAt', () => {
+  const { session, laps } = driveTwoLaps();
+  const lap = laps[1];
+  if (lap?.type !== 'lap') throw new Error('no lap');
+  const ghost = buildGhost(recordBestLap(session, lap), session.lane, profile);
+  const length = fx.toNumber(session.lane.length);
+
+  test('is zero at the start line and the lap time at the finish', () => {
+    expect(ghostTimeAt(ghost, 0)).toBeCloseTo(0, 0);
+    expect(ghostTimeAt(ghost, length - 0.01)).toBeCloseTo(fx.toNumber(lap.time), 0);
+  });
+
+  test('inverts ghostDistanceAt', () => {
+    const t = 600;
+    const start = ghostDistanceAt(ghost, 0) ?? 0;
+    const into = (ghostDistanceAt(ghost, t) ?? 0) - start;
+    expect(ghostTimeAt(ghost, into)).toBeCloseTo(t, 3);
+  });
+
+  test('is null beyond the lap', () => {
+    expect(ghostTimeAt(ghost, length + 10)).toBeNull();
   });
 });

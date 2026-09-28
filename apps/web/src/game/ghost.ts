@@ -115,3 +115,29 @@ export function saveGhost(key: string, record: GhostRecord): void {
     // Storage full or blocked: the ghost just is not kept.
   }
 }
+
+/**
+ * Ticks into its lap at which the ghost covered `distanceIntoLap` metres, or
+ * `null` if it never got that far within the lap. Used for the live gap.
+ */
+export function ghostTimeAt(ghost: Ghost, distanceIntoLap: number): number | null {
+  const start = ghostDistanceAt(ghost, 0);
+  const end = ghostDistanceAt(ghost, ghost.lapTime);
+  if (start === null || end === null) return null;
+  const target = start + distanceIntoLap;
+  if (distanceIntoLap < 0 || target > end) return null;
+
+  // Distances never decrease: binary search for the tick, then interpolate inside it.
+  const d = ghost.distances;
+  let low = Math.floor(ghost.lapStart);
+  let high = Math.min(Math.ceil(ghost.lapStart + ghost.lapTime), d.length - 1);
+  while (high - low > 1) {
+    const mid = (low + high) >> 1;
+    if ((d[mid] ?? 0) < target) low = mid;
+    else high = mid;
+  }
+  const from = d[low] ?? 0;
+  const to = d[high] ?? from;
+  const moment = to > from ? low + (target - from) / (to - from) : high;
+  return Math.max(0, moment - ghost.lapStart);
+}
