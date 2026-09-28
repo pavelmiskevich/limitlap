@@ -14,6 +14,8 @@
 
 ## Статус
 
+Играть: https://pavelmiskevich.github.io/limitlap/ — свежая сборка из `main`.
+
 Этап 0 — прототип: проверяем, интересно ли управлять одной скоростью.
 План работ — в [задачах и этапах](https://github.com/pavelmiskevich/limitlap/milestones).
 
