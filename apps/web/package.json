@@ -1,0 +1,14 @@
+{
+  "name": "@limitlap/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@limitlap/replay": "workspace:*",
+    "@limitlap/sim": "workspace:*",
+    "@limitlap/tracks": "workspace:*"
+  }
+}
