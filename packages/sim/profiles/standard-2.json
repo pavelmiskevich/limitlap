@@ -1,0 +1,21 @@
+{
+  "id": "standard",
+  "version": 2,
+  "accel": 15,
+  "brake": 30,
+  "vTop": 90,
+  "aHold": 40,
+  "loopGravity": 9.81,
+  "edge": {
+    "width": 0.06,
+    "fillRate": 3,
+    "drainRate": 1.5
+  },
+  "deslotPause": 0,
+  "rewindLimit": 10,
+  "pedalRamp": 0.3,
+  "probabilisticDeslot": {
+    "enabled": false,
+    "chancePerSecond": 0.5
+  }
+}

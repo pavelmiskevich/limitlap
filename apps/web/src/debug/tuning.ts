@@ -104,6 +104,15 @@ export const PARAMETERS: readonly Parameter[] = [
     step: 1,
     get: top('rewindLimit'),
   },
+  {
+    path: 'pedalRamp',
+    label: 'Нарастание педалей',
+    unit: 'с',
+    min: 0,
+    max: 1,
+    step: 0.05,
+    get: (p) => p.pedalRamp ?? 0,
+  },
 ];
 
 export function setParameter(profile: ProfileJson, path: string, value: number): ProfileJson {

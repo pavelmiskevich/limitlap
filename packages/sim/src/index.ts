@@ -22,6 +22,8 @@ export { segmentLimits, type SegmentLimit } from './limits.ts';
 export {
   DEFAULT_PROFILE,
   parseProfile,
+  PROFILES,
+  profileByKey,
   ProfileError,
   type PhysicsProfile,
   type ProfileJson,

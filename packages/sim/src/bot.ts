@@ -35,12 +35,16 @@ export function botTargetSpeed(
   const current = limits[state.segment]?.max;
   if (current != null) target = fx.min(target, fx.mul(current, share));
 
+  // A ramped brake reaches full force only after the ramp: on average half of it is lost.
+  const rampTicks = fx.div(fx.ONE, profile.pedalStepPerTick);
+  const lag = fx.div(fx.mul(state.speed, rampTicks), fx.mul(TWO, TICKS));
   let ahead = fx.sub(ends[state.segment] ?? lane.length, state.distance);
   for (let k = 1; k < count && ahead <= horizon; k++) {
     const index = (state.segment + k) % count;
     const limit = limits[index]?.max;
     if (limit != null) {
-      target = fx.min(target, approachSpeed(fx.mul(limit, share), ahead, brake));
+      const room = fx.max(fx.sub(ahead, lag), fx.ZERO);
+      target = fx.min(target, approachSpeed(fx.mul(limit, share), room, brake));
     }
     ahead = fx.add(ahead, lane.segments[index]?.length ?? fx.ZERO);
   }

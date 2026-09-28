@@ -12,6 +12,7 @@ const profile = parseProfile({
   ...DEFAULT_PROFILE.source,
   aHold: 40,
   edge: { width: 0.06, fillRate: 3, drainRate: 1.5 },
+  pedalRamp: 0,
 });
 const LIMIT = fx.fromInt(60);
 

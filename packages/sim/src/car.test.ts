@@ -2,7 +2,10 @@ import { describe, expect, test } from 'vitest';
 import { Command, createCar, step, type CarState } from './car.ts';
 import { fx } from './fixed.ts';
 import type { Lane } from './lane.ts';
-import { DEFAULT_PROFILE as profile } from './profile.ts';
+import { PROFILES } from './profile.ts';
+
+// Instant pedals: these tests check the mechanics step by step.
+const profile = PROFILES[0]!;
 
 const m = (meters: number) => fx.fromInt(meters);
 
@@ -42,6 +45,8 @@ describe('createCar', () => {
       sector: 0,
       sectorStart: 0,
       lapStart: 0,
+      pedal: 0,
+      pedalCommand: 0,
     });
   });
 });

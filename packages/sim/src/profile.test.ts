@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import standard from '../profiles/standard-1.json' with { type: 'json' };
+import standard2 from '../profiles/standard-2.json' with { type: 'json' };
 import { fx } from './fixed.ts';
 import { DEFAULT_PROFILE, parseProfile, ProfileError, type ProfileJson } from './profile.ts';
 
@@ -24,9 +25,9 @@ describe('default profile', () => {
     expect(() => parseProfile(standard)).not.toThrow();
   });
 
-  test('DEFAULT_PROFILE is the parsed standard profile', () => {
-    expect(DEFAULT_PROFILE.key).toBe('standard@1');
-    expect(DEFAULT_PROFILE.source).toEqual(standard);
+  test('DEFAULT_PROFILE is the latest standard profile', () => {
+    expect(DEFAULT_PROFILE.key).toBe('standard@2');
+    expect(DEFAULT_PROFILE.source).toEqual(standard2);
   });
 });
 

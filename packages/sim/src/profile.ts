@@ -4,7 +4,8 @@
  * and every result is tied to the profile key it was driven with.
  */
 
-import standard from '../profiles/standard-1.json' with { type: 'json' };
+import standard1 from '../profiles/standard-1.json' with { type: 'json' };
+import standard2 from '../profiles/standard-2.json' with { type: 'json' };
 import { TICKS_PER_SECOND } from './constants.ts';
 import { fx, type Fx } from './fixed.ts';
 
@@ -34,6 +35,8 @@ export interface ProfileJson {
   deslotPause: number;
   /** How far back rewind may go, seconds. */
   rewindLimit: number;
+  /** Time for a held pedal to reach full force, seconds; 0 or absent — at once. */
+  pedalRamp?: number;
   probabilisticDeslot: {
     enabled: boolean;
     /** Deslot chance per second at the full width of the edge zone. */
@@ -57,6 +60,8 @@ export interface PhysicsProfile {
   readonly edgeDrainPerTick: Fx;
   readonly deslotPauseTicks: number;
   readonly rewindLimitTicks: number;
+  /** Pedal level gained per tick of holding, up to 1. */
+  readonly pedalStepPerTick: Fx;
   readonly probabilisticDeslot: { readonly enabled: boolean; readonly chancePerTick: Fx };
   readonly source: ProfileJson;
 }
@@ -91,6 +96,7 @@ const SHAPE: Record<string, readonly string[]> = {
     'edge',
     'deslotPause',
     'rewindLimit',
+    'pedalRamp',
     'probabilisticDeslot',
   ],
   edge: ['width', 'fillRate', 'drainRate'],
@@ -134,6 +140,7 @@ function validate(json: unknown): string[] {
 
   within('deslotPause', json.deslotPause, 0, 10);
   within('rewindLimit', json.rewindLimit, 0, 60);
+  if (json.pedalRamp !== undefined) within('pedalRamp', json.pedalRamp, 0, 1);
 
   if (deslot) {
     if (typeof deslot.enabled !== 'boolean') {
@@ -159,6 +166,12 @@ const TICKS = fx.fromInt(TICKS_PER_SECOND);
 const perTick = (perSecond: number) => fx.div(fx.fromFloat(perSecond), TICKS);
 const toTicks = (seconds: number) => fx.toInt(fx.mul(fx.fromFloat(seconds), TICKS));
 
+/** Share of full pedal gained per tick: the whole pedal at once when there is no ramp. */
+function rampStep(seconds: number): Fx {
+  const ticks = toTicks(seconds);
+  return ticks > 0 ? fx.div(fx.ONE, fx.fromInt(ticks)) : fx.ONE;
+}
+
 /** Validates a profile and converts it for the simulation; throws `ProfileError`. */
 export function parseProfile(json: unknown): PhysicsProfile {
   const issues = validate(json);
@@ -179,6 +192,7 @@ export function parseProfile(json: unknown): PhysicsProfile {
     edgeDrainPerTick: perTick(source.edge.drainRate),
     deslotPauseTicks: toTicks(source.deslotPause),
     rewindLimitTicks: toTicks(source.rewindLimit),
+    pedalStepPerTick: rampStep(source.pedalRamp ?? 0),
     probabilisticDeslot: {
       enabled: source.probabilisticDeslot.enabled,
       chancePerTick: perTick(source.probabilisticDeslot.chancePerSecond),
@@ -187,4 +201,14 @@ export function parseProfile(json: unknown): PhysicsProfile {
   };
 }
 
-export const DEFAULT_PROFILE: PhysicsProfile = parseProfile(standard);
+/** Every published profile. A published version never changes. */
+export const PROFILES: readonly PhysicsProfile[] = [
+  parseProfile(standard1),
+  parseProfile(standard2),
+];
+
+export function profileByKey(key: string): PhysicsProfile | undefined {
+  return PROFILES.find((profile) => profile.key === key);
+}
+
+export const DEFAULT_PROFILE: PhysicsProfile = PROFILES[PROFILES.length - 1] as PhysicsProfile;

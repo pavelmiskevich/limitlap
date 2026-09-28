@@ -1,4 +1,4 @@
-import { DEFAULT_PROFILE } from '@limitlap/sim';
+import { profileByKey } from '@limitlap/sim';
 import { describe, expect, test } from 'vitest';
 import cases from '../golden/cases.json' with { type: 'json' };
 import { decodeReplay } from './format.ts';
@@ -15,13 +15,12 @@ describe('golden replays', () => {
 
   test.each(golden.map((c) => [c.name, c] as const))('%s replays to the frozen result', (_, c) => {
     const replay = decodeReplay(fromHex(c.replay));
-    expect(
-      `${replay.header.profileId}@${replay.header.profileVersion}`,
-      'profile changed: regenerate with `pnpm golden:update` if intended',
-    ).toBe(DEFAULT_PROFILE.key);
+    const profile = profileByKey(`${replay.header.profileId}@${replay.header.profileVersion}`);
+    expect(profile, 'the profile of the replay is no longer published').toBeDefined();
+    if (!profile) return;
 
     const lane = buildLane(LANES[c.lane] ?? { segments: [], sectors: [] });
-    const result = summarize(playCommands(replay.commands, lane, DEFAULT_PROFILE));
+    const result = summarize(playCommands(replay.commands, lane, profile));
 
     expect(result, 'simulation result changed: regenerate only if intended').toEqual(c.expected);
     expect(result.checksum).toBe(replay.checksum);

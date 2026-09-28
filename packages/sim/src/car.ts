@@ -41,6 +41,10 @@ export interface CarState {
   readonly sectorStart: Fx;
   /** Moment the current lap started, in ticks with a fractional part. */
   readonly lapStart: Fx;
+  /** How far the pedal is pressed, 0…1: it builds up while held (profile `pedalRamp`). */
+  readonly pedal: Fx;
+  /** The command the pedal level belongs to. */
+  readonly pedalCommand: Command;
 }
 
 export type DeslotCause = 'over-limit' | 'grip' | 'too-slow';
@@ -78,17 +82,26 @@ export function createCar(): CarState {
     sector: 0,
     sectorStart: fx.ZERO,
     lapStart: fx.ZERO,
+    pedal: fx.ZERO,
+    pedalCommand: Command.Hold,
   };
 }
 
 const TICKS = fx.fromInt(TICKS_PER_SECOND);
 
-function nextSpeed(speed: Fx, command: Command, profile: PhysicsProfile): Fx {
+/** Pedal level after this tick: builds up while the same pedal is held, restarts otherwise. */
+function nextPedal(state: CarState, command: Command, profile: PhysicsProfile): Fx {
+  if (command === Command.Hold) return fx.ZERO;
+  if (command !== state.pedalCommand) return fx.min(profile.pedalStepPerTick, fx.ONE);
+  return fx.min(fx.add(state.pedal, profile.pedalStepPerTick), fx.ONE);
+}
+
+function nextSpeed(speed: Fx, command: Command, pedal: Fx, profile: PhysicsProfile): Fx {
   switch (command) {
     case Command.Accel:
-      return fx.min(fx.add(speed, profile.accelPerTick), profile.vTop);
+      return fx.min(fx.add(speed, fx.mul(profile.accelPerTick, pedal)), profile.vTop);
     case Command.Brake:
-      return fx.max(fx.sub(speed, profile.brakePerTick), fx.ZERO);
+      return fx.max(fx.sub(speed, fx.mul(profile.brakePerTick, pedal)), fx.ZERO);
     case Command.Hold:
       return speed;
   }
@@ -170,10 +183,20 @@ export function step(
   const tick = state.tick + 1;
 
   if (state.pause > 0) {
-    return { ...state, tick, speed: fx.ZERO, slip: fx.ZERO, pause: state.pause - 1 };
+    return {
+      ...state,
+      tick,
+      speed: fx.ZERO,
+      slip: fx.ZERO,
+      pause: state.pause - 1,
+      pedal: fx.ZERO,
+      pedalCommand: Command.Hold,
+    };
   }
 
-  const speed = nextSpeed(state.speed, command, profile);
+  const pedal = nextPedal(state, command, profile);
+  const pedalCommand = command;
+  const speed = nextSpeed(state.speed, command, pedal, profile);
   const delta = fx.div(speed, TICKS);
   const pos: Track = {
     distance: state.distance,
@@ -226,11 +249,13 @@ export function step(
       grip: fx.ZERO,
       slip: fx.ZERO,
       pause: profile.deslotPauseTicks,
+      pedal: fx.ZERO,
+      pedalCommand: Command.Hold,
     };
   }
 
   const slip = fx.min(fx.div(excess, profile.edgeWidth), fx.ONE);
-  return { ...fromTrack(pos, tick), speed, grip, slip, pause: 0 };
+  return { ...fromTrack(pos, tick), speed, grip, slip, pause: 0, pedal, pedalCommand };
 }
 
 function fromTrack(pos: Track, tick: number) {

@@ -36,6 +36,7 @@ describe('parameters', () => {
       'edge.drainRate',
       'deslotPause',
       'rewindLimit',
+      'pedalRamp',
     ]);
   });
 

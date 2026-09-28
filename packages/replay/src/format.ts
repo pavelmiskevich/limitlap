@@ -245,6 +245,8 @@ export function stateChecksum(state: CarState): number {
     state.sector,
     state.sectorStart,
     state.lapStart,
+    state.pedal,
+    state.pedalCommand,
   ];
   let hash = 0x811c9dc5;
   for (const value of fields) {

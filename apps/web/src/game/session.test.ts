@@ -18,7 +18,9 @@ describe('session', () => {
     session.update(Command.Accel);
     session.update(Command.Hold);
     expect(session.state.tick).toBe(2);
-    expect(session.state.speed).toBe(DEFAULT_PROFILE.accelPerTick);
+    expect(session.state.speed).toBe(
+      fx.mul(DEFAULT_PROFILE.accelPerTick, DEFAULT_PROFILE.pedalStepPerTick),
+    );
     expect(Array.from(session.commands)).toEqual([Command.Accel, Command.Hold]);
   });
 
