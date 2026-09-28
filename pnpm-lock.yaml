@@ -233,6 +233,10 @@ importers:
       '@limitlap/sim':
         specifier: workspace:*
         version: link:../sim
+    devDependencies:
+      '@limitlap/tracks':
+        specifier: workspace:*
+        version: link:../tracks
 
   packages/sim: {}
 

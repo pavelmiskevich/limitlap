@@ -11,5 +11,8 @@
   },
   "dependencies": {
     "@limitlap/sim": "workspace:*"
+  },
+  "devDependencies": {
+    "@limitlap/tracks": "workspace:*"
   }
 }

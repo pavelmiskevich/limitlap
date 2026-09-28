@@ -7,3 +7,4 @@ export {
   type Replay,
   type ReplayHeader,
 } from './format.ts';
+export { buildReplay, playCommands, playReplay, type Playback } from './play.ts';

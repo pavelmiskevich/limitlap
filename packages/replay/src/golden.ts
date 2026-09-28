@@ -18,6 +18,7 @@ import {
   type SimEvent,
 } from '@limitlap/sim';
 import { encodeReplay, stateChecksum, type Replay } from './format.ts';
+import { playCommands as playFrom } from './play.ts';
 
 /** Lane described in plain metres, as stored in fixtures. */
 export interface LaneSpec {
@@ -86,10 +87,7 @@ export interface Drive {
 
 /** Runs recorded commands through the simulation. */
 export function playCommands(commands: Uint8Array, lane: Lane, profile: PhysicsProfile): Drive {
-  const events: SimEvent[] = [];
-  let state = createCar();
-  for (const command of commands) state = step(state, command as Command, lane, profile, events);
-  return { state, events };
+  return playFrom(commands, lane, profile);
 }
 
 export function summarize(drive: Drive): GoldenCase['expected'] {
