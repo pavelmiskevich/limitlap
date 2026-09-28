@@ -37,7 +37,7 @@ export interface CarState {
   readonly pause: number;
 }
 
-export type DeslotCause = 'over-limit' | 'grip';
+export type DeslotCause = 'over-limit' | 'grip' | 'too-slow';
 
 export type SimEvent = {
   readonly type: 'deslot';
@@ -120,11 +120,14 @@ export function step(
     segment += 1;
   }
 
-  const excess = excessOver(speed, segmentLimits(lane, profile)[segment]?.max ?? null);
+  const limit = segmentLimits(lane, profile)[segment];
+  const excess = excessOver(speed, limit?.max ?? null);
   let grip = state.grip;
   let cause: DeslotCause | null = null;
 
-  if (excess > profile.edgeWidth) {
+  if (limit?.min != null && speed < limit.min) {
+    cause = 'too-slow';
+  } else if (excess > profile.edgeWidth) {
     cause = 'over-limit';
   } else if (excess > 0) {
     grip = fx.add(grip, fx.mul(profile.edgeFillPerTick, fx.div(excess, profile.edgeWidth)));
@@ -135,6 +138,16 @@ export function step(
 
   if (cause !== null) {
     events?.push({ type: 'deslot', tick, distance, cause });
+    if (cause === 'too-slow') {
+      // Nowhere to stand inside the element: the capture sets the car down at its exit.
+      distance = ends[segment] ?? lane.length;
+      segment += 1;
+      if (distance >= lane.length) {
+        distance = fx.sub(distance, lane.length);
+        lap += 1;
+        segment = 0;
+      }
+    }
     return {
       tick,
       lap,

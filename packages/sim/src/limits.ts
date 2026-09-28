@@ -7,7 +7,10 @@ import { fx, type Fx } from './fixed.ts';
 import type { Lane, LaneSegment } from './lane.ts';
 import type { PhysicsProfile } from './profile.ts';
 
+/** Speed window of a segment. Either bound may be absent. */
 export interface SegmentLimit {
+  /** Lowest speed that keeps the car on the element, m/s. */
+  readonly min: Fx | null;
   /** Highest speed the field holds, m/s; `null` means only `vTop` applies. */
   readonly max: Fx | null;
 }
@@ -15,10 +18,11 @@ export interface SegmentLimit {
 function limitOf(segment: LaneSegment, profile: PhysicsProfile): SegmentLimit {
   switch (segment.kind) {
     case 'turn':
-      return { max: fx.sqrt(fx.mul(profile.aHold, segment.radius)) };
-    case 'straight':
+      return { min: null, max: fx.sqrt(fx.mul(profile.aHold, segment.radius)) };
     case 'loop':
-      return { max: null };
+      return { min: fx.sqrt(fx.mul(profile.loopGravity, segment.radius)), max: null };
+    case 'straight':
+      return { min: null, max: null };
   }
 }
 
