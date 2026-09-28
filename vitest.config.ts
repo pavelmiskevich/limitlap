@@ -6,7 +6,7 @@ export default defineConfig({
     passWithNoTests: true,
     coverage: {
       provider: 'v8',
-      include: ['packages/sim/src/**/*.ts'],
+      include: ['packages/*/src/**/*.ts'],
       exclude: ['**/*.test.ts'],
       reporter: ['text', 'html'],
     },

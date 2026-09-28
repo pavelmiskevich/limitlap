@@ -1,2 +1,9 @@
-/** Bumped on every incompatible change of the binary replay layout. */
-export const REPLAY_FORMAT_VERSION = 1;
+export { REPLAY_FORMAT_VERSION } from './version.ts';
+export {
+  decodeReplay,
+  encodeReplay,
+  ReplayError,
+  stateChecksum,
+  type Replay,
+  type ReplayHeader,
+} from './format.ts';
