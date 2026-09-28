@@ -59,7 +59,7 @@ describe('speed window', () => {
 
   test('braking inside the loop below the minimum makes the car fall', () => {
     const { events } = drive(inLoop(11), 60, Command.Brake);
-    expect(events.map((e) => e.cause)).toEqual(['too-slow']);
+    expect(events.map((e) => (e.type === 'deslot' ? e.cause : e.type))).toEqual(['too-slow']);
   });
 
   test('after falling the car is captured at the loop exit with zero speed', () => {

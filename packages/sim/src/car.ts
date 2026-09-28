@@ -35,16 +35,33 @@ export interface CarState {
   readonly slip: Fx;
   /** Ticks left of the pause after a deslot. */
   readonly pause: number;
+  /** Index of the sector the car is in. */
+  readonly sector: number;
+  /** Moment the current sector started, in ticks with a fractional part. */
+  readonly sectorStart: Fx;
+  /** Moment the current lap started, in ticks with a fractional part. */
+  readonly lapStart: Fx;
 }
 
 export type DeslotCause = 'over-limit' | 'grip' | 'too-slow';
 
-export type SimEvent = {
-  readonly type: 'deslot';
-  readonly tick: number;
-  readonly distance: Fx;
-  readonly cause: DeslotCause;
-};
+/** Times are in ticks with a fractional part: the crossing moment inside a tick. */
+export type SimEvent =
+  | {
+      readonly type: 'deslot';
+      readonly tick: number;
+      readonly distance: Fx;
+      readonly cause: DeslotCause;
+    }
+  | {
+      readonly type: 'sector';
+      readonly tick: number;
+      /** Lap the sector belongs to, starting from 1. */
+      readonly lap: number;
+      readonly sector: number;
+      readonly time: Fx;
+    }
+  | { readonly type: 'lap'; readonly tick: number; readonly lap: number; readonly time: Fx };
 
 export function createCar(): CarState {
   return {
@@ -56,6 +73,9 @@ export function createCar(): CarState {
     grip: fx.ZERO,
     slip: fx.ZERO,
     pause: 0,
+    sector: 0,
+    sectorStart: fx.ZERO,
+    lapStart: fx.ZERO,
   };
 }
 
@@ -91,6 +111,66 @@ function excessOver(speed: Fx, limit: Fx | null): Fx {
   return fx.div(fx.sub(speed, limit), limit);
 }
 
+/** Mutable position of the car while one tick is being resolved. */
+interface Track {
+  distance: Fx;
+  lap: number;
+  segment: number;
+  sector: number;
+  sectorStart: Fx;
+  lapStart: Fx;
+}
+
+/**
+ * Moves the car forward to `target` (may lie beyond the finish line), updating
+ * segment, sector and lap and reporting every boundary crossed. `timeAt` gives
+ * the moment, in ticks, the car reaches a given distance.
+ */
+function advance(
+  pos: Track,
+  target: Fx,
+  lane: Lane,
+  tick: number,
+  timeAt: (distance: Fx) => Fx,
+  events: SimEvent[] | undefined,
+): void {
+  const ends = endsOf(lane);
+  for (;;) {
+    const boundary = lane.sectors[pos.sector + 1] ?? lane.length;
+    if (target < boundary) break;
+    const time = timeAt(boundary);
+    events?.push({
+      type: 'sector',
+      tick,
+      lap: pos.lap + 1,
+      sector: pos.sector,
+      time: fx.sub(time, pos.sectorStart),
+    });
+    pos.sectorStart = time;
+    if (boundary === lane.length) {
+      pos.lap += 1;
+      events?.push({ type: 'lap', tick, lap: pos.lap, time: fx.sub(time, pos.lapStart) });
+      pos.lapStart = time;
+      pos.sector = 0;
+      pos.segment = 0;
+      target = fx.sub(target, lane.length);
+      timeAt = shiftBy(timeAt, lane.length);
+    } else {
+      pos.sector += 1;
+    }
+  }
+  pos.distance = target;
+  while (pos.segment < ends.length - 1 && target >= (ends[pos.segment] ?? lane.length)) {
+    pos.segment += 1;
+  }
+}
+
+/** The same clock for distances measured from the next lap's start. */
+const shiftBy =
+  (timeAt: (distance: Fx) => Fx, length: Fx) =>
+  (distance: Fx): Fx =>
+    timeAt(fx.add(distance, length));
+
 export function step(
   state: CarState,
   command: Command,
@@ -105,22 +185,29 @@ export function step(
   }
 
   const speed = nextSpeed(state.speed, command, profile);
-  let distance = fx.add(state.distance, fx.div(speed, TICKS));
-  let lap = state.lap;
-  let segment = state.segment;
+  const delta = fx.div(speed, TICKS);
+  const pos: Track = {
+    distance: state.distance,
+    lap: state.lap,
+    segment: state.segment,
+    sector: state.sector,
+    sectorStart: state.sectorStart,
+    lapStart: state.lapStart,
+  };
 
-  while (distance >= lane.length) {
-    distance = fx.sub(distance, lane.length);
-    lap += 1;
-    segment = 0;
-  }
+  // Crossing moments are interpolated inside the tick: (tick − 1) + covered / delta.
+  const tickStart = fx.fromInt(state.tick);
+  const from = state.distance;
+  advance(
+    pos,
+    fx.add(from, delta),
+    lane,
+    tick,
+    (distance) => fx.add(tickStart, fx.div(fx.sub(distance, from), delta)),
+    events,
+  );
 
-  const ends = endsOf(lane);
-  while (segment < ends.length - 1 && distance >= (ends[segment] ?? lane.length)) {
-    segment += 1;
-  }
-
-  const limit = segmentLimits(lane, profile)[segment];
+  const limit = segmentLimits(lane, profile)[pos.segment];
   const excess = excessOver(speed, limit?.max ?? null);
   let grip = state.grip;
   let cause: DeslotCause | null = null;
@@ -137,23 +224,16 @@ export function step(
   }
 
   if (cause !== null) {
-    events?.push({ type: 'deslot', tick, distance, cause });
+    events?.push({ type: 'deslot', tick, distance: pos.distance, cause });
     if (cause === 'too-slow') {
       // Nowhere to stand inside the element: the capture sets the car down at its exit.
-      distance = ends[segment] ?? lane.length;
-      segment += 1;
-      if (distance >= lane.length) {
-        distance = fx.sub(distance, lane.length);
-        lap += 1;
-        segment = 0;
-      }
+      const exit = endsOf(lane)[pos.segment] ?? lane.length;
+      const now = fx.fromInt(tick);
+      advance(pos, exit, lane, tick, () => now, events);
     }
     return {
-      tick,
-      lap,
-      distance,
+      ...fromTrack(pos, tick),
       speed: fx.ZERO,
-      segment,
       grip: fx.ZERO,
       slip: fx.ZERO,
       pause: profile.deslotPauseTicks,
@@ -161,5 +241,17 @@ export function step(
   }
 
   const slip = fx.min(fx.div(excess, profile.edgeWidth), fx.ONE);
-  return { tick, lap, distance, speed, segment, grip, slip, pause: 0 };
+  return { ...fromTrack(pos, tick), speed, grip, slip, pause: 0 };
+}
+
+function fromTrack(pos: Track, tick: number) {
+  return {
+    tick,
+    lap: pos.lap,
+    distance: pos.distance,
+    segment: pos.segment,
+    sector: pos.sector,
+    sectorStart: pos.sectorStart,
+    lapStart: pos.lapStart,
+  };
 }

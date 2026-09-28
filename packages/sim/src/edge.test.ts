@@ -88,7 +88,8 @@ describe('edge zone', () => {
     expect(events).toEqual([
       { type: 'deslot', tick: 1, distance: expect.any(Number) as number, cause: 'over-limit' },
     ]);
-    expect(events[0]?.distance).toBeGreaterThan(m(101));
+    const [first] = events;
+    expect(first?.type === 'deslot' && first.distance > m(101)).toBe(true);
   });
 
   test('a full meter deslots', () => {

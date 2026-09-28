@@ -39,6 +39,9 @@ describe('createCar', () => {
       grip: 0,
       slip: 0,
       pause: 0,
+      sector: 0,
+      sectorStart: 0,
+      lapStart: 0,
     });
   });
 });
