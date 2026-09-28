@@ -1,5 +1,5 @@
-import { REPLAY_FORMAT_VERSION } from '@limitlap/replay';
-import { TICKS_PER_SECOND } from '@limitlap/sim';
-import { MAX_LANES } from '@limitlap/tracks';
+import { startApp } from './app.ts';
 
-document.title = `LimitLap · ${TICKS_PER_SECOND} Hz · ${MAX_LANES} lanes · replay v${REPLAY_FORMAT_VERSION}`;
+const root = document.querySelector<HTMLElement>('#app');
+if (!root) throw new Error('#app is missing');
+startApp(root);

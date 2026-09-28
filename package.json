@@ -7,6 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "dev": "pnpm --filter @limitlap/web dev",
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
