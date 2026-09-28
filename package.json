@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "golden:update": "node packages/replay/scripts/update-golden.ts",
-    "test:browsers": "vitest run --config vitest.browsers.config.ts"
+    "test:browsers": "vitest run --config vitest.browsers.config.ts",
+    "balance": "node packages/tracks/scripts/balance.ts"
   },
   "devDependencies": {
     "@eslint/compat": "^2.1.1",

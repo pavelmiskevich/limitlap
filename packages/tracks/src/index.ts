@@ -1,6 +1,7 @@
 /** A track has from one to this many lanes. */
 export const MAX_LANES = 4;
 
+export { balanceTable, laneBalance, type LaneBalanceRow } from './balance.ts';
 export { compileTrack, segmentFor } from './compile.ts';
 export { PROTO_RING, PROTO_RING_SOLO } from './prototypes.ts';
 export {
