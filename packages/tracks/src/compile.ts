@@ -10,7 +10,8 @@ import { laneOffset, type SectionJson, type TrackSpec } from './schema.ts';
 
 const DEG = Math.PI / 180;
 
-function segmentFor(section: SectionJson, offset: number): LaneSegment {
+/** The lane segment a section becomes for a lane at `offset` from the centre line. */
+export function segmentFor(section: SectionJson, offset: number): LaneSegment {
   switch (section.type) {
     case 'straight':
       return { kind: 'straight', length: fx.fromFloat(section.length) };
