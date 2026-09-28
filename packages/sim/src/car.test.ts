@@ -30,7 +30,16 @@ const atSpeed = (speed: number, distance = 0): CarState => ({
 
 describe('createCar', () => {
   test('starts at the line, standing, in the first segment', () => {
-    expect(createCar()).toEqual({ tick: 0, lap: 0, distance: 0, speed: 0, segment: 0 });
+    expect(createCar()).toEqual({
+      tick: 0,
+      lap: 0,
+      distance: 0,
+      speed: 0,
+      segment: 0,
+      grip: 0,
+      slip: 0,
+      pause: 0,
+    });
   });
 });
 
@@ -40,7 +49,14 @@ describe('speed', () => {
   });
 
   test('speed never exceeds vTop', () => {
-    expect(run(createCar(), Command.Accel, 60 * 60).speed).toBe(profile.vTop);
+    const straight: Lane = {
+      length: m(1000),
+      segments: [{ kind: 'straight', length: m(1000) }],
+      sectors: [m(0)],
+    };
+    let state = createCar();
+    for (let i = 0; i < 60 * 60; i++) state = step(state, Command.Accel, straight, profile);
+    expect(state.speed).toBe(profile.vTop);
   });
 
   test('without commands the speed is kept', () => {

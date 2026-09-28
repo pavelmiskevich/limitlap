@@ -1,12 +1,13 @@
 /**
  * The car on its lane: one-dimensional state advanced in fixed ticks.
  * `step` is pure — the same state, command, lane and profile always give the
- * same next state.
+ * same next state. Events are appended to an optional list.
  */
 
 import { TICKS_PER_SECOND } from './constants.ts';
 import { fx, type Fx } from './fixed.ts';
 import type { Lane } from './lane.ts';
+import { segmentLimits } from './limits.ts';
 import type { PhysicsProfile } from './profile.ts';
 
 /** One input per tick. Numeric so a replay stores it in two bits. */
@@ -28,10 +29,34 @@ export interface CarState {
   readonly speed: Fx;
   /** Index of the lane segment the car is in. */
   readonly segment: number;
+  /** Grip meter, 0…1: fills in the edge zone, a full meter deslots the car. */
+  readonly grip: Fx;
+  /** How deep into the edge zone the car is, 0…1; drives the slide and sound. */
+  readonly slip: Fx;
+  /** Ticks left of the pause after a deslot. */
+  readonly pause: number;
 }
 
+export type DeslotCause = 'over-limit' | 'grip';
+
+export type SimEvent = {
+  readonly type: 'deslot';
+  readonly tick: number;
+  readonly distance: Fx;
+  readonly cause: DeslotCause;
+};
+
 export function createCar(): CarState {
-  return { tick: 0, lap: 0, distance: fx.ZERO, speed: fx.ZERO, segment: 0 };
+  return {
+    tick: 0,
+    lap: 0,
+    distance: fx.ZERO,
+    speed: fx.ZERO,
+    segment: 0,
+    grip: fx.ZERO,
+    slip: fx.ZERO,
+    pause: 0,
+  };
 }
 
 const TICKS = fx.fromInt(TICKS_PER_SECOND);
@@ -60,12 +85,25 @@ function nextSpeed(speed: Fx, command: Command, profile: PhysicsProfile): Fx {
   }
 }
 
+/** Share of speed above the limit: (v − limit) / limit, or 0 within the limit. */
+function excessOver(speed: Fx, limit: Fx | null): Fx {
+  if (limit === null || speed <= limit) return fx.ZERO;
+  return fx.div(fx.sub(speed, limit), limit);
+}
+
 export function step(
   state: CarState,
   command: Command,
   lane: Lane,
   profile: PhysicsProfile,
+  events?: SimEvent[],
 ): CarState {
+  const tick = state.tick + 1;
+
+  if (state.pause > 0) {
+    return { ...state, tick, speed: fx.ZERO, slip: fx.ZERO, pause: state.pause - 1 };
+  }
+
   const speed = nextSpeed(state.speed, command, profile);
   let distance = fx.add(state.distance, fx.div(speed, TICKS));
   let lap = state.lap;
@@ -82,5 +120,33 @@ export function step(
     segment += 1;
   }
 
-  return { tick: state.tick + 1, lap, distance, speed, segment };
+  const excess = excessOver(speed, segmentLimits(lane, profile)[segment]?.max ?? null);
+  let grip = state.grip;
+  let cause: DeslotCause | null = null;
+
+  if (excess > profile.edgeWidth) {
+    cause = 'over-limit';
+  } else if (excess > 0) {
+    grip = fx.add(grip, fx.mul(profile.edgeFillPerTick, fx.div(excess, profile.edgeWidth)));
+    if (grip >= fx.ONE) cause = 'grip';
+  } else {
+    grip = fx.max(fx.sub(grip, profile.edgeDrainPerTick), fx.ZERO);
+  }
+
+  if (cause !== null) {
+    events?.push({ type: 'deslot', tick, distance, cause });
+    return {
+      tick,
+      lap,
+      distance,
+      speed: fx.ZERO,
+      segment,
+      grip: fx.ZERO,
+      slip: fx.ZERO,
+      pause: profile.deslotPauseTicks,
+    };
+  }
+
+  const slip = fx.min(fx.div(excess, profile.edgeWidth), fx.ONE);
+  return { tick, lap, distance, speed, segment, grip, slip, pause: 0 };
 }
