@@ -27,6 +27,19 @@ export interface CompiledTrack {
   readonly lanes: readonly Lane[];
 }
 
+const ends = new WeakMap<Lane, readonly Fx[]>();
+
+/** Distance at which each segment ends, computed once per lane. */
+export function segmentEnds(lane: Lane): readonly Fx[] {
+  let result = ends.get(lane);
+  if (!result) {
+    let total = fx.ZERO;
+    result = lane.segments.map((segment) => (total = fx.add(total, segment.length)));
+    ends.set(lane, result);
+  }
+  return result;
+}
+
 const meters = (value: Fx) => `${fx.toNumber(value)} m`;
 
 /** Returns a list of problems; an empty list means the lane is usable. */

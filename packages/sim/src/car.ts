@@ -6,7 +6,7 @@
 
 import { TICKS_PER_SECOND } from './constants.ts';
 import { fx, type Fx } from './fixed.ts';
-import type { Lane } from './lane.ts';
+import { segmentEnds, type Lane } from './lane.ts';
 import { segmentLimits } from './limits.ts';
 import type { PhysicsProfile } from './profile.ts';
 
@@ -81,19 +81,6 @@ export function createCar(): CarState {
 
 const TICKS = fx.fromInt(TICKS_PER_SECOND);
 
-const segmentEnds = new WeakMap<Lane, Fx[]>();
-
-/** Distance at which each segment ends, cached per lane. */
-function endsOf(lane: Lane): Fx[] {
-  let ends = segmentEnds.get(lane);
-  if (!ends) {
-    let total = fx.ZERO;
-    ends = lane.segments.map((segment) => (total = fx.add(total, segment.length)));
-    segmentEnds.set(lane, ends);
-  }
-  return ends;
-}
-
 function nextSpeed(speed: Fx, command: Command, profile: PhysicsProfile): Fx {
   switch (command) {
     case Command.Accel:
@@ -134,7 +121,7 @@ function advance(
   timeAt: (distance: Fx) => Fx,
   events: SimEvent[] | undefined,
 ): void {
-  const ends = endsOf(lane);
+  const ends = segmentEnds(lane);
   for (;;) {
     const boundary = lane.sectors[pos.sector + 1] ?? lane.length;
     if (target < boundary) break;
@@ -227,7 +214,7 @@ export function step(
     events?.push({ type: 'deslot', tick, distance: pos.distance, cause });
     if (cause === 'too-slow') {
       // Nowhere to stand inside the element: the capture sets the car down at its exit.
-      const exit = endsOf(lane)[pos.segment] ?? lane.length;
+      const exit = segmentEnds(lane)[pos.segment] ?? lane.length;
       const now = fx.fromInt(tick);
       advance(pos, exit, lane, tick, () => now, events);
     }
