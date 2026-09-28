@@ -33,7 +33,9 @@ TypeScript, Three.js, Vite. Одна детерминированная симу
 ```sh
 pnpm install          # зависимости всех пакетов
 pnpm test             # тесты
-pnpm test:coverage    # тесты с покрытием симуляции
+pnpm test:coverage    # тесты с покрытием пакетов
+pnpm test:browsers    # эталонные реплеи в Firefox и WebKit
+pnpm golden:update    # пересоздать эталоны, если физика изменена намеренно
 pnpm lint             # ESLint
 pnpm typecheck        # проверка типов во всех пакетах
 pnpm format           # Prettier

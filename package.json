@@ -14,7 +14,8 @@
     "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .git/info/exclude --ignore-path .prettierignore",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "golden:update": "node packages/replay/scripts/update-golden.ts"
+    "golden:update": "node packages/replay/scripts/update-golden.ts",
+    "test:browsers": "vitest run --config vitest.browsers.config.ts"
   },
   "devDependencies": {
     "@eslint/compat": "^2.1.1",
