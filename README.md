@@ -22,6 +22,7 @@
 ## Документы
 
 - [Концепция](docs/limitlap_idea_v4.md)
+- [Памятка тестеру](docs/playtest-guide.md)
 
 ## Стек
 
