@@ -4,7 +4,7 @@
  */
 
 import { Color, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from 'three';
-import { DEFAULT_PROFILE, fx } from '@limitlap/sim';
+import { DEFAULT_PROFILE, fx, parseProfile } from '@limitlap/sim';
 import {
   compileTrack,
   createTrackGeometry,
@@ -22,6 +22,8 @@ import {
   type Ghost,
   type GhostRecord,
 } from './game/ghost.ts';
+import { createDebugPanel } from './debug/panel.ts';
+import { loadTuning, saveTuning, tunedProfile } from './debug/tuning.ts';
 import { createSession, type Session } from './game/session.ts';
 import { createHud } from './hud/hud.ts';
 import { createControls } from './input/controls.ts';
@@ -99,11 +101,13 @@ export function startApp(root: HTMLElement): void {
   const geometry = createTrackGeometry(spec);
   stage.scene.add(createTrackMesh(spec, geometry));
 
+  const debug = new URLSearchParams(location.search).has('debug');
+  const tuning = debug ? loadTuning() : null;
   const laneIndex = 1;
   const session = createSession({
     track: compileTrack(spec),
     lane: laneIndex,
-    profile: DEFAULT_PROFILE,
+    profile: tuning ? parseProfile(tunedProfile(tuning)) : DEFAULT_PROFILE,
   });
   const path = geometry.lanes[laneIndex];
   if (!path) throw new Error('no lane path');
@@ -113,9 +117,14 @@ export function startApp(root: HTMLElement): void {
   const ghostCar = createCarMesh('#ffffff', { ghost: true });
   stage.scene.add(car.object, car.marker, ghostCar.object, ghostCar.marker);
 
-  const storeKey = ghostKey(`${spec.id}@${spec.version}`, session.profile.key, laneIndex);
-  const stored = loadGhost(storeKey);
-  let ghost = stored ? tryBuildGhost(stored, session) : null;
+  let storeKey = '';
+  let ghost: Ghost | null = null;
+  const loadBest = () => {
+    storeKey = ghostKey(`${spec.id}@${spec.version}`, session.profile.key, laneIndex);
+    const stored = loadGhost(storeKey);
+    ghost = stored ? tryBuildGhost(stored, session) : null;
+  };
+  loadBest();
 
   let view: 'chase' | 'overview' = 'chase';
   let snapCamera = true;
@@ -127,6 +136,18 @@ export function startApp(root: HTMLElement): void {
   const controls = createControls(root);
   const hud = createHud(root, { onRestart: restart });
   const input = combine([keyboard, controls.source]);
+
+  if (debug) {
+    createDebugPanel(root, {
+      values: session.profile.source,
+      onChange(values) {
+        saveTuning(values);
+        session.profile = values ? parseProfile(tunedProfile(values)) : DEFAULT_PROFILE;
+        loadBest();
+        restart();
+      },
+    });
+  }
   window.addEventListener('keydown', (event) => {
     if (event.code === 'KeyC' && !event.repeat) {
       view = view === 'chase' ? 'overview' : 'chase';
