@@ -42,6 +42,8 @@ export function saveSettings(settings: ControlSettings): void {
 export interface Controls {
   /** Current on-screen scheme; stays valid when the scheme changes. */
   readonly source: InputSource;
+  /** The settings panel, for other settings to add their rows to. */
+  readonly panel: HTMLElement;
   dispose(): void;
 }
 
@@ -107,7 +109,9 @@ export function createControls(root: HTMLElement): Controls {
     ),
   );
   const mark = () => {
-    for (const option of panel.querySelectorAll<HTMLElement>('button')) {
+    for (const option of panel.querySelectorAll<HTMLElement>(
+      'button[data-scheme], button[data-hand]',
+    )) {
       const selected =
         option.dataset.scheme === settings.scheme || option.dataset.hand === settings.hand;
       option.classList.toggle('selected', selected);
@@ -118,6 +122,7 @@ export function createControls(root: HTMLElement): Controls {
   root.append(gear, panel);
 
   return {
+    panel,
     source: {
       command: (ctx) => current.command(ctx),
       dispose: () => current.dispose(),

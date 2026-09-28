@@ -162,6 +162,10 @@ body {
   gap: 8px;
 }
 
+.choice[hidden] {
+  display: none;
+}
+
 .choice span {
   min-width: 96px;
   font-size: 14px;
