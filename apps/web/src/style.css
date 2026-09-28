@@ -30,3 +30,153 @@ body {
   width: 100%;
   height: 100%;
 }
+
+/* ---------------------------------------------------------------- controls */
+
+.controls {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  --edge: max(16px, env(safe-area-inset-right));
+}
+
+.controls.hand-left {
+  --edge: max(16px, env(safe-area-inset-left));
+}
+
+.slider,
+.buttons {
+  position: absolute;
+  bottom: max(9vh, calc(env(safe-area-inset-bottom) + 24px));
+  pointer-events: auto;
+}
+
+.hand-right .slider,
+.hand-right .buttons {
+  right: var(--edge);
+}
+
+.hand-left .slider,
+.hand-left .buttons {
+  left: var(--edge);
+}
+
+.slider {
+  width: 76px;
+  height: 52vh;
+  border-radius: 38px;
+  border: 2px solid rgb(143 180 255 / 55%);
+  background: rgb(10 16 36 / 45%);
+  overflow: hidden;
+}
+
+.slider.active {
+  border-color: #22e6ff;
+}
+
+.slider-speed {
+  position: absolute;
+  inset: auto 0 0;
+  height: 0;
+  background: linear-gradient(to top, rgb(34 230 255 / 55%), rgb(255 61 242 / 45%));
+}
+
+.slider-target {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 4px;
+  bottom: 0;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 0 10px #fff;
+  opacity: 0;
+}
+
+.slider.active .slider-target {
+  opacity: 1;
+}
+
+.buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.pedal {
+  border-radius: 50%;
+  border: 2px solid;
+  background: rgb(10 16 36 / 45%);
+  padding: 0;
+}
+
+.pedal.gas {
+  width: 104px;
+  height: 104px;
+  border-color: #4dff88;
+}
+
+.pedal.brake {
+  width: 80px;
+  height: 80px;
+  border-color: #ff3b1f;
+}
+
+.pedal.active {
+  background: rgb(255 255 255 / 25%);
+}
+
+.gear {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgb(143 180 255 / 45%);
+  background: rgb(10 16 36 / 60%);
+  color: var(--fg);
+  font-size: 22px;
+}
+
+.panel {
+  position: fixed;
+  top: calc(max(12px, env(safe-area-inset-top)) + 52px);
+  right: max(12px, env(safe-area-inset-right));
+  padding: 12px;
+  border-radius: 12px;
+  background: rgb(10 16 36 / 92%);
+  border: 1px solid rgb(143 180 255 / 35%);
+  display: grid;
+  gap: 10px;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.choice span {
+  min-width: 96px;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.choice button {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgb(143 180 255 / 35%);
+  background: transparent;
+  color: var(--fg);
+}
+
+.choice button.selected {
+  border-color: #22e6ff;
+  background: rgb(34 230 255 / 18%);
+}

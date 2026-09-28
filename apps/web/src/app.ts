@@ -12,6 +12,8 @@ import {
   type TrackGeometry,
 } from '@limitlap/tracks';
 import { createSession } from './game/session.ts';
+import { createControls } from './input/controls.ts';
+import { combine } from './input/input.ts';
 import { createKeyboard } from './input/keyboard.ts';
 import { createFixedStep } from './loop.ts';
 import { createCarMesh } from './render/car-mesh.ts';
@@ -99,12 +101,14 @@ export function startApp(root: HTMLElement): void {
 
   let view: 'chase' | 'overview' = 'chase';
   let snapCamera = true;
-  const input = createKeyboard(window, {
+  const keyboard = createKeyboard(window, {
     onRestart: () => {
       session.reset();
       snapCamera = true;
     },
   });
+  const controls = createControls(root);
+  const input = combine([keyboard, controls.source]);
   window.addEventListener('keydown', (event) => {
     if (event.code === 'KeyC' && !event.repeat) {
       view = view === 'chase' ? 'overview' : 'chase';
