@@ -3,7 +3,7 @@
  * loop — fixed simulation steps first, then a draw with interpolation.
  */
 
-import { DEFAULT_PROFILE, parseProfile } from '@limitlap/sim';
+import { Command, DEFAULT_PROFILE, fx, parseProfile } from '@limitlap/sim';
 import { PROTO_RING_SOLO } from '@limitlap/tracks';
 import { Color, PerspectiveCamera, Scene, WebGLRenderer } from 'three';
 import { createDebugPanel } from './debug/panel.ts';
@@ -20,6 +20,8 @@ import { createControls } from './input/controls.ts';
 import { combine } from './input/input.ts';
 import { createKeyboard } from './input/keyboard.ts';
 import { createFixedStep } from './loop.ts';
+import { createTracker, loadStats, saveStats } from './stats/stats.ts';
+import { createStatsView } from './stats/stats-view.ts';
 
 export interface Game {
   /** One simulation step (1/60 s). */
@@ -87,12 +89,29 @@ export function startApp(root: HTMLElement): void {
   const tuning = debug ? loadTuning() : null;
   let profile = tuning ? parseProfile(tunedProfile(tuning)) : DEFAULT_PROFILE;
 
-  const build = ({ track, lane }: RaceSettings) =>
-    createRace({ scene: stage.scene, spec: trackById(track) ?? PROTO_RING_SOLO, lane, profile });
+  const tracker = createTracker(loadStats());
+  let savedAt = 0;
+  const save = () => {
+    saveStats(tracker.stats);
+    savedAt = performance.now();
+  };
+
+  const build = ({ track, lane }: RaceSettings) => {
+    tracker.startAttempt();
+    return createRace({
+      scene: stage.scene,
+      spec: trackById(track) ?? PROTO_RING_SOLO,
+      lane,
+      profile,
+    });
+  };
   let race = build(loadRaceSettings());
 
   let view: View = 'chase';
-  const restart = () => race.restart();
+  const restart = () => {
+    race.restart();
+    tracker.startAttempt();
+  };
   const keyboard = createKeyboard(window, { onRestart: restart });
   const controls = createControls(root);
   const hud = createHud(root, { onRestart: restart });
@@ -100,6 +119,11 @@ export function startApp(root: HTMLElement): void {
   createRaceChoices(controls.panel, loadRaceSettings(), (settings) => {
     race.dispose();
     race = build(settings);
+  });
+  createStatsView(root, controls.panel, () => tracker.stats);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) save();
+    else tracker.resume();
   });
   window.addEventListener('keydown', (event) => {
     if (event.code === 'KeyC' && !event.repeat) view = view === 'chase' ? 'overview' : 'chase';
@@ -112,6 +136,7 @@ export function startApp(root: HTMLElement): void {
         saveTuning(values);
         profile = values ? parseProfile(tunedProfile(values)) : DEFAULT_PROFILE;
         race.setProfile(profile);
+        tracker.startAttempt();
       },
     });
   }
@@ -119,10 +144,26 @@ export function startApp(root: HTMLElement): void {
   runLoop(stage, {
     update() {
       const { session } = race;
-      race.update(input.command({ speed: session.state.speed, profile: session.profile }));
+      const command = input.command({ speed: session.state.speed, profile: session.profile });
+      if (command !== Command.Hold) tracker.drove();
+      race.update(command);
+      for (const event of session.lastEvents) {
+        if (event.type === 'deslot') tracker.deslot();
+        if (event.type === 'lap') {
+          tracker.lap({
+            track: `${session.track.id}@${session.track.version}`,
+            lane: session.laneIndex,
+            profile: session.profile.key,
+            time: fx.toNumber(event.time),
+          });
+          save();
+        }
+      }
     },
     render(alpha, dt) {
       hud.update(race.render(alpha, dt, stage.camera, view));
+      if (race.session.state.speed > 0) tracker.tick(dt);
+      if (performance.now() - savedAt > 5000) save();
     },
   });
 }

@@ -346,3 +346,55 @@ body {
   background: transparent;
   color: var(--fg);
 }
+
+/* ---------------------------------------------------------------- statistics */
+
+.panel-wide {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgb(143 180 255 / 35%);
+  background: transparent;
+  color: var(--fg);
+}
+
+.stats {
+  position: fixed;
+  inset: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  padding: 16px;
+  border-radius: 12px;
+  background: rgb(5 6 10 / 96%);
+  border: 1px solid rgb(143 180 255 / 35%);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 12px;
+}
+
+.stats[hidden] {
+  display: none;
+}
+
+.stats pre {
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  font:
+    15px/1.5 ui-monospace,
+    monospace;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.stats-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.stats-actions button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #22e6ff;
+  background: rgb(34 230 255 / 12%);
+  color: var(--fg);
+  font-size: 15px;
+}
