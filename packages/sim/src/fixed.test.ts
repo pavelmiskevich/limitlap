@@ -36,6 +36,12 @@ describe('construction', () => {
     expect(() => fx.fromFloat(Number.POSITIVE_INFINITY)).toThrow(RangeError);
   });
 
+  test('toInt truncates toward zero', () => {
+    expect(fx.toInt(fx.fromFloat(2.75))).toBe(2);
+    expect(fx.toInt(fx.fromFloat(-2.75))).toBe(-2);
+    expect(fx.toInt(fx.fromFloat(-0.5))).toBe(0);
+  });
+
   test('toNumber inverts fromFloat for exact values', () => {
     expect(fx.toNumber(fx.fromFloat(-7.25))).toBe(-7.25);
   });

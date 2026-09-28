@@ -77,6 +77,12 @@ export const fx = {
     return checked(roundHalfAway(x * FX_ONE));
   },
 
+  /** Integer part, truncated toward zero. */
+  toInt(a: Fx): number {
+    const whole = (a - (a % FX_ONE)) / FX_ONE;
+    return whole === 0 ? 0 : whole;
+  },
+
   /** For rendering and diagnostics only; never feed the result back into the simulation. */
   toNumber(a: Fx): number {
     return a / FX_ONE;
